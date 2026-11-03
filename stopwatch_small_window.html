@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#101827">
+<title>작은 창 초시계</title>
+<style>
+*{box-sizing:border-box}body{margin:0;padding:24px 18px;background:#101827;color:#f8fafc;font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",sans-serif;text-align:center}
+h1{font-size:22px;margin:10px 0 8px}.help{color:#b8c3d3;font-size:14px;line-height:1.55;margin:0 auto 26px;max-width:340px}
+#time{font-variant-numeric:tabular-nums;font-size:clamp(48px,15vw,72px);font-weight:700;letter-spacing:1px;margin:30px 0}
+.buttons{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+button{border:0;border-radius:13px;padding:15px 20px;min-width:100px;font-size:16px;font-weight:650;color:#101827;background:#e5e7eb}
+#start{background:#4ade80}#pip{background:#60a5fa;min-width:190px}
+#status{min-height:42px;color:#cbd5e1;font-size:13px;line-height:1.5;margin-top:22px}
+#pipVideo,#paint{position:fixed;width:320px;height:180px;left:-1000px;top:0}
+</style>
+</head>
+<body>
+<h1>작은 창 초시계</h1>
+<p class="help">초시계를 시작한 뒤 <b>작은 창으로 보기</b>를 누르고 사파리에서 다른 사이트를 열어보세요.</p>
+<div id="time">00:00.0</div>
+<div class="buttons"><button id="start">시작</button><button id="reset">초기화</button></div>
+<div class="buttons" style="margin-top:12px"><button id="pip">작은 창으로 보기</button></div>
+<div id="status">아이폰에서는 사파리에서 열어 테스트해 주세요.</div>
+<canvas id="paint" width="640" height="360"></canvas>
+<video id="pipVideo" muted playsinline></video>
+<script>
+(() => {
+const display=document.getElementById('time'),status=document.getElementById('status');
+const startButton=document.getElementById('start'),resetButton=document.getElementById('reset'),pipButton=document.getElementById('pip');
+const canvas=document.getElementById('paint'),ctx=canvas.getContext('2d'),video=document.getElementById('pipVideo');
+let elapsed=0,startedAt=0,running=false,streamReady=false;
+const current=()=>elapsed+(running?performance.now()-startedAt:0);
+const format=ms=>{const t=Math.floor(ms/100),m=Math.floor(t/600),s=Math.floor((t%600)/10),d=t%10;return String(m).padStart(2,'0')+':'+String(s).padStart(2,'0')+'.'+d};
+function paint(){const v=format(current());display.textContent=v;ctx.fillStyle='#101827';ctx.fillRect(0,0,640,360);ctx.fillStyle='#94a3b8';ctx.font='28px sans-serif';ctx.textAlign='center';ctx.fillText('STOPWATCH',320,105);ctx.fillStyle='#fff';ctx.font='bold 86px sans-serif';ctx.fillText(v,320,220);ctx.fillStyle=running?'#4ade80':'#60a5fa';ctx.beginPath();ctx.arc(320,285,9,0,Math.PI*2);ctx.fill();requestAnimationFrame(paint)}
+paint();
+startButton.addEventListener('click',()=>{if(!running){startedAt=performance.now();running=true;startButton.textContent='정지'}else{elapsed=current();running=false;startButton.textContent='시작'}});
+resetButton.addEventListener('click',()=>{elapsed=0;running=false;startButton.textContent='시작'});
+async function prepareVideo(){if(streamReady)return;if(!canvas.captureStream)throw Error('이 브라우저는 캔버스 영상 기능을 지원하지 않습니다.');const stream=canvas.captureStream(15);video.muted=true;video.playsInline=true;video.controls=true;video.srcObject=stream;await video.play();video.controls=false;streamReady=true}
+pipButton.addEventListener('click',async()=>{try{if(!running){status.textContent='먼저 초시계를 시작해 주세요.';return}await prepareVideo();if(video.webkitSupportsPresentationMode&&video.webkitSupportsPresentationMode('picture-in-picture')&&typeof video.webkitSetPresentationMode==='function'){video.webkitSetPresentationMode('picture-in-picture');status.textContent='작은 창이 뜨면 홈으로 나가 사파리에서 다른 사이트를 열어보세요.'}else if(video.requestPictureInPicture){await video.requestPictureInPicture();status.textContent='작은 창이 뜨면 다른 사이트를 열어보세요.'}else{status.textContent='이 브라우저에서는 작은 창 기능을 사용할 수 없습니다. 아이폰 사파리에서 열어주세요.'}}catch(e){status.textContent='작은 창 실행 실패: '+(e&&e.message?e.message:'브라우저가 요청을 거부했습니다.')}});
+video.addEventListener('webkitpresentationmodechanged',()=>{if(video.webkitPresentationMode==='picture-in-picture')status.textContent='초시계 작은 창 실행 중입니다. 홈으로 나가 다른 사이트를 열어보세요.'});
+})();
+</script>
+</body>
+</html>
